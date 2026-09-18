@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Quick OTP</string>
+    <string name="add_from_barcode">Add OTP from barcode</string>
+    <string name="add_from_secret">Add OTP from secret</string>
+    <string name="scan_otp_barcode">Scan OTP barcode</string>
+    <string name="scan_hint">Point the camera at a QR or barcode</string>
+    <string name="close_scan">Close scanner</string>
+    <string name="empty_accounts">Add an OTP from a barcode or a secret to get started.</string>
+    <string name="secret_or_uri">Secret or otpauth URI</string>
+    <string name="secret_hint">Base32 secret or otpauth://…</string>
+    <string name="continue_action">Continue</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="label_title">Label this OTP</string>
+    <string name="label_hint">OTP for mysite</string>
+    <string name="label_required">Enter a label</string>
+    <string name="edit_otp">Edit OTP</string>
+    <string name="rename">Rename</string>
+    <string name="rename_otp">Rename OTP</string>
+    <string name="show_barcode">Show barcode</string>
+    <string name="show_secret">Show secret</string>
+    <string name="delete">Delete</string>
+    <string name="delete_otp_title">Delete OTP?</string>
+    <string name="delete_otp_message">“%1$s” will be removed from this device.</string>
+    <string name="otp_secret_title">Secret</string>
+    <string name="otp_barcode_title">Barcode</string>
+    <string name="otp_uri_label">URI</string>
+    <string name="copy_secret">Copy secret</string>
+    <string name="copy_code">Copy code</string>
+    <string name="copied">Copied</string>
+    <string name="next_hotp">Next code</string>
+    <string name="camera_permission_required">Camera permission is required to scan barcodes</string>
+    <string name="invalid_barcode">Not a valid OTP barcode</string>
+    <string name="invalid_secret">Not a valid secret or otpauth URI</string>
+    <string name="close">Close</string>
+    <string name="seconds_remaining">%1$d seconds remaining</string>
+</resources>

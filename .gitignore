@@ -1,0 +1,17 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystore
+*.jks
+*.keystore
+!app/keystore/quickotp.keystore

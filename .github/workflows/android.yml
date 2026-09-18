@@ -1,0 +1,73 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Resolve version
+        id: version
+        run: echo "version=1.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Unit tests
+        run: |
+          ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --stacktrace --no-daemon
+
+      - name: Build release APK (arm64-v8a)
+        run: ./gradlew :app:assembleRelease --stacktrace --no-daemon
+
+      - name: Stage release artifacts
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          src="$(ls app/build/outputs/apk/release/*.apk | head -n1)"
+          cp "$src" "artifacts/app-${VERSION}.apk"
+          ls -la artifacts/
+
+      - name: Stage stable release filename
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: cp "artifacts/app-${VERSION}.apk" artifacts/app.apk
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Quick OTP ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          make_latest: true
+          files: |
+            artifacts/app-${{ steps.version.outputs.version }}.apk
+            artifacts/app.apk

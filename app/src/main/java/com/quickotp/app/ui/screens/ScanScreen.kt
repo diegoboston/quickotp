@@ -37,10 +37,27 @@ import com.quickotp.app.R
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
+private fun barcodeFormatName(format: Int): String = when (format) {
+    Barcode.FORMAT_QR_CODE -> "QR_CODE"
+    Barcode.FORMAT_AZTEC -> "AZTEC"
+    Barcode.FORMAT_DATA_MATRIX -> "DATA_MATRIX"
+    Barcode.FORMAT_PDF417 -> "PDF_417"
+    Barcode.FORMAT_CODE_128 -> "CODE_128"
+    Barcode.FORMAT_CODE_39 -> "CODE_39"
+    Barcode.FORMAT_CODE_93 -> "CODE_93"
+    Barcode.FORMAT_EAN_13 -> "EAN_13"
+    Barcode.FORMAT_EAN_8 -> "EAN_8"
+    Barcode.FORMAT_UPC_A -> "UPC_A"
+    Barcode.FORMAT_UPC_E -> "UPC_E"
+    Barcode.FORMAT_CODABAR -> "CODABAR"
+    Barcode.FORMAT_ITF -> "ITF"
+    else -> "QR_CODE"
+}
+
 @OptIn(ExperimentalGetImage::class)
 @Composable
 fun ScanScreen(
-    onScanned: (String) -> Boolean,
+    onScanned: (raw: String, format: String) -> Boolean,
     onClose: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -99,9 +116,10 @@ fun ScanScreen(
                 inFlight.set(true)
                 scanner.process(image)
                     .addOnSuccessListener(mainExecutor) { barcodes ->
-                        val raw = barcodes.firstNotNullOfOrNull { it.rawValue }
-                        if (!raw.isNullOrBlank()) {
-                            onScanned(raw)
+                        val hit = barcodes.firstOrNull { !it.rawValue.isNullOrBlank() }
+                        val raw = hit?.rawValue
+                        if (hit != null && !raw.isNullOrBlank()) {
+                            onScanned(raw, barcodeFormatName(hit.format))
                         }
                     }
                     .addOnCompleteListener(mainExecutor) {

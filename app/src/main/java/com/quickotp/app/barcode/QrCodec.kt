@@ -33,7 +33,7 @@ object QrCodec {
     }
 }
 
-private class BitMatrixLuminanceSource(
+internal class BitMatrixLuminanceSource(
     private val matrix: BitMatrix,
 ) : LuminanceSource(matrix.width, matrix.height) {
     override fun getRow(y: Int, row: ByteArray?): ByteArray {

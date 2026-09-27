@@ -1,6 +1,6 @@
 # Quick OTP
 
-Android authenticator for TOTP and HOTP (`otpauth://`) secrets. Scan a barcode, paste a secret, label it, and read the current code on the home list.
+Android authenticator for TOTP and HOTP (`otpauth://`) secrets. Scan a barcode, paste a secret, label it, and read the current code on the home list. A scan that is not an OTP is kept as-is and shown in the same list.
 
 Designed for sideloading on recent 64-bit ARM phones. CI builds a signed arm64 release APK and publishes it to GitHub Releases.
 
@@ -17,10 +17,11 @@ Designed for sideloading on recent 64-bit ARM phones. CI builds a signed arm64 r
 
 ## Features
 
-- **Add from barcode** — Camera button in the top bar. Points the camera at a QR (or other) barcode containing an `otpauth://` URI or a Base32 secret. After a successful scan, the app asks for a label (for example `OTP for mysite`).
+- **Add from barcode** — Camera button in the top bar. An `otpauth://` URI or a Base32 secret becomes an OTP, and the app asks for a label in a field labeled “Add label”. Any other barcode is stored exactly as scanned. The app asks you to label it, then shows that label and the scanned value in the home list.
+- **Stored barcodes** — These rows sit with the OTPs. A down chevron next to the label expands a clean barcode rendered from the stored value (the same symbology when it can be encoded, otherwise a QR of that value). The chevron switches to up and hides the barcode, showing the value again. Tap the value to copy it. The pencil menu renames or deletes it.
 - **Add from secret** — Plus button in the top bar. Paste a Base32 secret or a full `otpauth://totp/…` / `otpauth://hotp/…` URI, then label it.
-- **Home list** — Each row shows the label, the current code (grouped, tap to copy), and a circular spinner for TOTP remaining time. The code and spinner turn **red in the last 10 seconds**. HOTP rows show a refresh button that advances the counter.
-- **Pencil menu** — Rename, show barcode (QR of the `otpauth` URI), show secret (Base32 plus URI), delete with confirmation.
+- **Home list** — Each OTP row shows the label, the current code (grouped, tap to copy), and a circular spinner for TOTP remaining time. The code and spinner turn **red in the last 10 seconds**. HOTP rows show a refresh button that advances the counter.
+- **Pencil menu** — For an OTP: rename, show barcode (QR of the `otpauth` URI), show secret (Base32 plus URI), delete with confirmation. For a stored barcode: rename and delete.
 - **Protocols** — TOTP (RFC 6238) and HOTP (RFC 4226), algorithms SHA1 / SHA256 / SHA512, 5–10 digits, custom period. Unknown issuer/account from some barcode apps (`<Unknown>`) is ignored when suggesting a label.
 
 ## Screens
@@ -36,8 +37,17 @@ Designed for sideloading on recent 64-bit ARM phones. CI builds a signed arm64 r
 │  GitHub                             │
 │  847 291                   ◷   ✎    │
 │                                     │
-│  ✎ → rename · show barcode          │
+│  Lobby door                  ⌄   ✎  │  ← stored barcode (value)
+│  https://example.com/door           │
+│                                     │
+│  Lobby door                  ⌃   ✎  │  ← chevron expands a clean
+│  ┌─────────────────────────┐        │     barcode of that value
+│  │        barcode          │        │
+│  └─────────────────────────┘        │
+│                                     │
+│  ✎ → OTP: rename · show barcode     │
 │      show secret · delete           │
+│      barcode: rename · delete       │
 └─────────────────────────────────────┘
 ```
 
@@ -61,7 +71,7 @@ CI (`.github/workflows/android.yml`) runs unit tests and `assembleRelease`, then
 
 ## Tests
 
-JVM unit tests cover Base32, RFC 4226 HOTP vectors, RFC 6238 TOTP vectors (SHA1/SHA256/SHA512), `otpauth://` parse/encode (including `<Unknown>` labels), period/urgency math, input parsing, and QR encode/decode round-trips.
+JVM unit tests cover Base32, RFC 4226 HOTP vectors, RFC 6238 TOTP vectors (SHA1/SHA256/SHA512), `otpauth://` parse/encode (including `<Unknown>` labels), period/urgency math, input parsing, scan classification (OTP versus stored barcode), and barcode encode/decode round-trips.
 
 ```bash
 ./gradlew :app:testDebugUnitTest
@@ -72,7 +82,7 @@ JVM unit tests cover Base32, RFC 4226 HOTP vectors, RFC 6238 TOTP vectors (SHA1/
 ```
 app/src/main/java/com/quickotp/app/
   otp/           TOTP/HOTP, Base32, otpauth URI
-  barcode/       QR encode (ZXing) and Android bitmaps
+  barcode/       QR and other barcode encode (ZXing), scan classification, Android bitmaps
   data/          Room accounts
   ui/            Compose home list, camera scan, dialogs
 .github/workflows/android.yml

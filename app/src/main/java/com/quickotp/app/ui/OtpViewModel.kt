@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.quickotp.app.QuickOtpApp
 import com.quickotp.app.R
+import com.quickotp.app.barcode.ClassifiedScan
+import com.quickotp.app.barcode.ScanClassifier
+import com.quickotp.app.data.EntryKind
 import com.quickotp.app.data.OtpAccount
 import com.quickotp.app.data.toAccount
 import com.quickotp.app.otp.OtpDraft
@@ -29,11 +32,15 @@ class OtpViewModel(app: Application) : AndroidViewModel(app) {
     private val _pendingDraft = MutableStateFlow<OtpDraft?>(null)
     val pendingDraft: StateFlow<OtpDraft?> = _pendingDraft.asStateFlow()
 
+    private val _pendingBarcode = MutableStateFlow<ClassifiedScan.Stored?>(null)
+    val pendingBarcode: StateFlow<ClassifiedScan.Stored?> = _pendingBarcode.asStateFlow()
+
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
 
     fun tryAcceptInput(raw: String, invalidMessage: String = context.getString(R.string.invalid_secret)): Boolean {
         return try {
+            _pendingBarcode.value = null
             _pendingDraft.value = OtpInputParser.parse(raw)
             true
         } catch (_: Exception) {
@@ -42,8 +49,36 @@ class OtpViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun tryAcceptScan(
+        raw: String,
+        format: String,
+        invalidMessage: String = context.getString(R.string.invalid_barcode),
+    ): Boolean {
+        val classified = try {
+            ScanClassifier.classify(raw, format)
+        } catch (_: Exception) {
+            viewModelScope.launch { _messages.send(invalidMessage) }
+            return false
+        }
+        when (classified) {
+            is ClassifiedScan.Otp -> {
+                _pendingBarcode.value = null
+                _pendingDraft.value = classified.draft
+            }
+            is ClassifiedScan.Stored -> {
+                _pendingDraft.value = null
+                _pendingBarcode.value = classified
+            }
+        }
+        return true
+    }
+
     fun clearPendingDraft() {
         _pendingDraft.value = null
+    }
+
+    fun clearPendingBarcode() {
+        _pendingBarcode.value = null
     }
 
     fun savePending(label: String) {
@@ -53,9 +88,29 @@ class OtpViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch { _messages.send(context.getString(R.string.label_required)) }
             return
         }
+        _pendingDraft.value = null
         viewModelScope.launch {
             repo.insert(draft.toAccount(trimmed))
-            _pendingDraft.value = null
+        }
+    }
+
+    fun savePendingBarcode(label: String) {
+        val stored = _pendingBarcode.value ?: return
+        val trimmed = label.trim()
+        if (trimmed.isEmpty()) {
+            viewModelScope.launch { _messages.send(context.getString(R.string.label_required)) }
+            return
+        }
+        _pendingBarcode.value = null
+        viewModelScope.launch {
+            repo.insert(
+                OtpAccount(
+                    label = trimmed,
+                    secret = stored.value,
+                    kind = EntryKind.BARCODE.name,
+                    barcodeFormat = stored.format,
+                ),
+            )
         }
     }
 
@@ -78,7 +133,7 @@ class OtpViewModel(app: Application) : AndroidViewModel(app) {
     fun advanceHotp(id: Long) {
         viewModelScope.launch {
             val account = repo.getById(id) ?: return@launch
-            if (account.otpType != OtpType.HOTP) return@launch
+            if (account.isBarcode || account.otpType != OtpType.HOTP) return@launch
             repo.update(account.copy(counter = account.counter + 1))
         }
     }

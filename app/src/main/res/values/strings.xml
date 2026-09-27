@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Quick OTP</string>
-    <string name="add_from_barcode">Add OTP from barcode</string>
+    <string name="add_from_barcode">Scan a barcode</string>
     <string name="add_from_secret">Add OTP from secret</string>
     <string name="scan_otp_barcode">Scan OTP barcode</string>
     <string name="scan_hint">Point the camera at a QR or barcode</string>
@@ -13,12 +13,19 @@
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="label_title">Label this OTP</string>
-    <string name="label_hint">OTP for mysite</string>
+    <string name="label_barcode_title">Label this barcode</string>
+    <string name="label_hint">Add label</string>
     <string name="label_required">Enter a label</string>
     <string name="edit_otp">Edit OTP</string>
     <string name="rename">Rename</string>
     <string name="rename_otp">Rename OTP</string>
+    <string name="rename_barcode">Rename barcode</string>
     <string name="show_barcode">Show barcode</string>
+    <string name="hide_barcode">Hide barcode</string>
+    <string name="edit_barcode">Edit barcode</string>
+    <string name="delete_barcode_title">Delete barcode?</string>
+    <string name="barcode_for">Barcode for %1$s</string>
+    <string name="barcode_render_failed">Could not render a barcode for this value</string>
     <string name="show_secret">Show secret</string>
     <string name="delete">Delete</string>
     <string name="delete_otp_title">Delete OTP?</string>

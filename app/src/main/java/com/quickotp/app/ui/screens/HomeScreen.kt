@@ -64,11 +64,13 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.quickotp.app.R
+import com.quickotp.app.barcode.ClassifiedScan
 import com.quickotp.app.barcode.QrBitmaps
 import com.quickotp.app.data.OtpAccount
 import com.quickotp.app.otp.OtpDraft
 import com.quickotp.app.ui.OtpViewModel
 import com.quickotp.app.ui.components.OtpCodeRow
+import com.quickotp.app.ui.components.StoredBarcodeRow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -76,6 +78,7 @@ private sealed interface HomeDialog {
     data object None : HomeDialog
     data object AddSecret : HomeDialog
     data class AskLabel(val draft: OtpDraft) : HomeDialog
+    data class AskBarcodeLabel(val stored: ClassifiedScan.Stored) : HomeDialog
     data class Menu(val account: OtpAccount) : HomeDialog
     data class Rename(val account: OtpAccount) : HomeDialog
     data class ShowBarcode(val account: OtpAccount) : HomeDialog
@@ -88,6 +91,7 @@ private sealed interface HomeDialog {
 fun HomeScreen(viewModel: OtpViewModel) {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val pendingDraft by viewModel.pendingDraft.collectAsStateWithLifecycle()
+    val pendingBarcode by viewModel.pendingBarcode.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
@@ -109,11 +113,18 @@ fun HomeScreen(viewModel: OtpViewModel) {
         }
     }
 
-    LaunchedEffect(pendingDraft) {
+    LaunchedEffect(pendingDraft, pendingBarcode) {
         val draft = pendingDraft
-        if (draft != null && dialog !is HomeDialog.AskLabel) {
-            scanning = false
-            dialog = HomeDialog.AskLabel(draft)
+        val barcode = pendingBarcode
+        when {
+            draft != null && dialog !is HomeDialog.AskLabel -> {
+                scanning = false
+                dialog = HomeDialog.AskLabel(draft)
+            }
+            barcode != null && dialog !is HomeDialog.AskBarcodeLabel -> {
+                scanning = false
+                dialog = HomeDialog.AskBarcodeLabel(barcode)
+            }
         }
     }
 
@@ -186,16 +197,27 @@ fun HomeScreen(viewModel: OtpViewModel) {
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
                     items(accounts, key = { it.id }) { account ->
-                        OtpCodeRow(
-                            account = account,
-                            nowMillis = nowMillis,
-                            onCopyCode = { code ->
-                                clipboard.setText(AnnotatedString(code))
-                                viewModel.notifyCopied()
-                            },
-                            onAdvanceHotp = { viewModel.advanceHotp(account.id) },
-                            onEdit = { dialog = HomeDialog.Menu(account) },
-                        )
+                        if (account.isBarcode) {
+                            StoredBarcodeRow(
+                                account = account,
+                                onCopyValue = { value ->
+                                    clipboard.setText(AnnotatedString(value))
+                                    viewModel.notifyCopied()
+                                },
+                                onEdit = { dialog = HomeDialog.Menu(account) },
+                            )
+                        } else {
+                            OtpCodeRow(
+                                account = account,
+                                nowMillis = nowMillis,
+                                onCopyCode = { code ->
+                                    clipboard.setText(AnnotatedString(code))
+                                    viewModel.notifyCopied()
+                                },
+                                onAdvanceHotp = { viewModel.advanceHotp(account.id) },
+                                onEdit = { dialog = HomeDialog.Menu(account) },
+                            )
+                        }
                     }
                 }
             }
@@ -203,8 +225,12 @@ fun HomeScreen(viewModel: OtpViewModel) {
 
         if (scanning) {
             ScanScreen(
-                onScanned = { raw ->
-                    viewModel.tryAcceptInput(raw, context.getString(R.string.invalid_barcode))
+                onScanned = { raw, format ->
+                    viewModel.tryAcceptScan(
+                        raw,
+                        format,
+                        context.getString(R.string.invalid_barcode),
+                    )
                 },
                 onClose = { scanning = false },
             )
@@ -227,6 +253,7 @@ fun HomeScreen(viewModel: OtpViewModel) {
             },
         )
         is HomeDialog.AskLabel -> LabelDialog(
+            title = stringResource(R.string.label_title),
             initialLabel = current.draft.suggestedLabel(),
             onDismiss = {
                 viewModel.clearPendingDraft()
@@ -234,6 +261,18 @@ fun HomeScreen(viewModel: OtpViewModel) {
             },
             onSave = { label ->
                 viewModel.savePending(label)
+                dialog = HomeDialog.None
+            },
+        )
+        is HomeDialog.AskBarcodeLabel -> LabelDialog(
+            title = stringResource(R.string.label_barcode_title),
+            initialLabel = "",
+            onDismiss = {
+                viewModel.clearPendingBarcode()
+                dialog = HomeDialog.None
+            },
+            onSave = { label ->
+                viewModel.savePendingBarcode(label)
                 dialog = HomeDialog.None
             },
         )
@@ -312,6 +351,7 @@ private fun AddSecretDialog(
 
 @Composable
 private fun LabelDialog(
+    title: String,
     initialLabel: String,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
@@ -319,7 +359,7 @@ private fun LabelDialog(
     var text by remember { mutableStateOf(initialLabel) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.label_title)) },
+        title = { Text(title) },
         text = {
             OutlinedTextField(
                 value = text,
@@ -373,16 +413,18 @@ private fun EditSheet(
             },
             modifier = Modifier.clickable(onClick = onRename),
         )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.show_barcode)) },
-            leadingContent = { Icon(Icons.Outlined.QrCode2, contentDescription = null) },
-            modifier = Modifier.clickable(onClick = onShowBarcode),
-        )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.show_secret)) },
-            leadingContent = { Icon(Icons.Outlined.Visibility, contentDescription = null) },
-            modifier = Modifier.clickable(onClick = onShowSecret),
-        )
+        if (!account.isBarcode) {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.show_barcode)) },
+                leadingContent = { Icon(Icons.Outlined.QrCode2, contentDescription = null) },
+                modifier = Modifier.clickable(onClick = onShowBarcode),
+            )
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.show_secret)) },
+                leadingContent = { Icon(Icons.Outlined.Visibility, contentDescription = null) },
+                modifier = Modifier.clickable(onClick = onShowSecret),
+            )
+        }
         ListItem(
             headlineContent = { Text(stringResource(R.string.delete)) },
             leadingContent = { Icon(Icons.Outlined.Delete, contentDescription = null) },
@@ -401,7 +443,13 @@ private fun RenameDialog(
     var text by remember { mutableStateOf(account.label) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.rename_otp)) },
+        title = {
+            Text(
+                stringResource(
+                    if (account.isBarcode) R.string.rename_barcode else R.string.rename_otp,
+                ),
+            )
+        },
         text = {
             OutlinedTextField(
                 value = text,
@@ -515,7 +563,13 @@ private fun ConfirmDeleteDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.delete_otp_title)) },
+        title = {
+            Text(
+                stringResource(
+                    if (account.isBarcode) R.string.delete_barcode_title else R.string.delete_otp_title,
+                ),
+            )
+        },
         text = { Text(stringResource(R.string.delete_otp_message, account.label)) },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(stringResource(R.string.delete)) }

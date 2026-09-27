@@ -4,6 +4,7 @@ import com.quickotp.app.data.OtpAccount
 
 object OtpCodes {
     fun currentCode(account: OtpAccount, timeMillis: Long): String {
+        require(!account.isBarcode) { "Stored barcodes have no OTP code" }
         val secret = Base32.decode(account.secret)
         return when (account.otpType) {
             OtpType.TOTP -> OtpGenerator.totp(

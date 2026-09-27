@@ -138,6 +138,14 @@ class OtpViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun setValueVisible(id: Long, visible: Boolean) {
+        viewModelScope.launch {
+            val account = repo.getById(id) ?: return@launch
+            if (account.valueVisible == visible) return@launch
+            repo.update(account.copy(valueVisible = visible))
+        }
+    }
+
     fun notifyCopied() {
         viewModelScope.launch { _messages.send(context.getString(R.string.copied)) }
     }

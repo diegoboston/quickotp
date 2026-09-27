@@ -20,6 +20,8 @@
     <string name="rename">Rename</string>
     <string name="rename_otp">Rename OTP</string>
     <string name="rename_barcode">Rename barcode</string>
+    <string name="show_code">Show code</string>
+    <string name="hide_code">Hide code</string>
     <string name="show_barcode">Show barcode</string>
     <string name="hide_barcode">Hide barcode</string>
     <string name="edit_barcode">Edit barcode</string>

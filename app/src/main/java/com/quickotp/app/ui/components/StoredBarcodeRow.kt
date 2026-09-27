@@ -19,10 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,9 +37,10 @@ import com.quickotp.app.data.OtpAccount
 fun StoredBarcodeRow(
     account: OtpAccount,
     onCopyValue: (String) -> Unit,
+    onToggleValue: () -> Unit,
     onEdit: () -> Unit,
 ) {
-    var expanded by remember(account.id) { mutableStateOf(false) }
+    val valueVisible = account.valueVisible
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -65,20 +63,20 @@ fun StoredBarcodeRow(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    IconButton(onClick = { expanded = !expanded }) {
+                    IconButton(onClick = onToggleValue) {
                         Icon(
-                            imageVector = if (expanded) {
-                                Icons.Filled.KeyboardArrowUp
-                            } else {
+                            imageVector = if (valueVisible) {
                                 Icons.Filled.KeyboardArrowDown
+                            } else {
+                                Icons.Filled.KeyboardArrowUp
                             },
                             contentDescription = stringResource(
-                                if (expanded) R.string.hide_barcode else R.string.show_barcode,
+                                if (valueVisible) R.string.show_barcode else R.string.hide_barcode,
                             ),
                         )
                     }
                 }
-                if (expanded) {
+                if (!valueVisible) {
                     val rendered = remember(account.secret, account.barcodeFormat) {
                         runCatching {
                             BarcodeBitmaps.render(account.secret, account.barcodeFormat)

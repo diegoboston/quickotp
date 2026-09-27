@@ -18,9 +18,9 @@ Designed for sideloading on recent 64-bit ARM phones. CI builds a signed arm64 r
 ## Features
 
 - **Add from barcode** — Camera button in the top bar. An `otpauth://` URI or a Base32 secret becomes an OTP, and the app asks for a label in a field labeled “Add label”. Any other barcode is stored exactly as scanned. The app asks you to label it, then shows that label and the scanned value in the home list.
-- **Stored barcodes** — These rows sit with the OTPs. A down chevron next to the label expands a clean barcode rendered from the stored value (the same symbology when it can be encoded, otherwise a QR of that value). The chevron switches to up and hides the barcode, showing the value again. Tap the value to copy it. The pencil menu renames or deletes it.
+- **Stored barcodes** — These rows sit with the OTPs. A down chevron next to the label expands a clean barcode rendered from the stored value (the same symbology when it can be encoded, otherwise a QR of that value). The chevron switches to up and hides the barcode, showing the value again. Tap the value to copy it. Whether the barcode or the value is showing is kept on the device. The pencil menu renames or deletes it.
 - **Add from secret** — Plus button in the top bar. Paste a Base32 secret or a full `otpauth://totp/…` / `otpauth://hotp/…` URI, then label it.
-- **Home list** — Each OTP row shows the label, the current code (grouped, tap to copy), and a circular spinner for TOTP remaining time. The code and spinner turn **red in the last 10 seconds**. HOTP rows show a refresh button that advances the counter.
+- **Home list** — Each OTP row shows the label with a chevron beside it, the current code (grouped, tap to copy), and a circular spinner for TOTP remaining time. The code and spinner turn **red in the last 10 seconds**. HOTP rows show a refresh button that advances the counter. The down chevron hides the code, the spinner, and the refresh button, and switches to up; up shows them again. That choice is kept on the device across launches.
 - **Pencil menu** — For an OTP: rename, show barcode (QR of the `otpauth` URI), show secret (Base32 plus URI), delete with confirmation. For a stored barcode: rename and delete.
 - **Protocols** — TOTP (RFC 6238) and HOTP (RFC 4226), algorithms SHA1 / SHA256 / SHA512, 5–10 digits, custom period. Unknown issuer/account from some barcode apps (`<Unknown>`) is ignored when suggesting a label.
 
@@ -31,11 +31,10 @@ Designed for sideloading on recent 64-bit ARM phones. CI builds a signed arm64 r
 │ Quick OTP              [barcode] [+]│  ← scan camera · paste secret
 ├─────────────────────────────────────┤
 │                                     │
-│  OTP for mysite                     │
-│  123 456                   ◷   ✎    │  ← spinner (red last 10s)
+│  OTP for mysite              ⌄      │
+│  123 456                   ◷   ✎    │  ← ⌄ hides code, timer, refresh
 │                                     │
-│  GitHub                             │
-│  847 291                   ◷   ✎    │
+│  GitHub                      ⌃   ✎  │  ← hidden, kept next launch
 │                                     │
 │  Lobby door                  ⌄   ✎  │  ← stored barcode (value)
 │  https://example.com/door           │

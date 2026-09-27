@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Card
@@ -26,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.quickotp.app.R
 import com.quickotp.app.data.OtpAccount
@@ -40,6 +43,7 @@ fun OtpCodeRow(
     account: OtpAccount,
     nowMillis: Long,
     onCopyCode: (String) -> Unit,
+    onToggleValue: () -> Unit,
     onAdvanceHotp: () -> Unit,
     onEdit: () -> Unit,
 ) {
@@ -68,43 +72,61 @@ fun OtpCodeRow(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onCopyCode(code) },
-            ) {
-                Text(
-                    text = account.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = formatted,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontFamily = FontFamily.Monospace,
-                    color = codeColor,
-                )
-            }
-            if (totp) {
-                val remainingDesc = stringResource(R.string.seconds_remaining, remainingSeconds)
-                CircularProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .semantics { contentDescription = remainingDesc },
-                    color = if (urgent) UrgentRed else MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    strokeWidth = 3.dp,
-                )
-            } else {
-                IconButton(onClick = onAdvanceHotp) {
-                    Icon(
-                        imageVector = Icons.Filled.Refresh,
-                        contentDescription = stringResource(R.string.next_hotp),
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = account.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    IconButton(onClick = onToggleValue) {
+                        Icon(
+                            imageVector = if (account.valueVisible) {
+                                Icons.Filled.KeyboardArrowDown
+                            } else {
+                                Icons.Filled.KeyboardArrowUp
+                            },
+                            contentDescription = stringResource(
+                                if (account.valueVisible) R.string.hide_code else R.string.show_code,
+                            ),
+                        )
+                    }
+                }
+                if (account.valueVisible) {
+                    Text(
+                        text = formatted,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontFamily = FontFamily.Monospace,
+                        color = codeColor,
+                        modifier = Modifier.clickable { onCopyCode(code) },
                     )
                 }
             }
-            Spacer(Modifier.width(4.dp))
+            if (account.valueVisible) {
+                if (totp) {
+                    val remainingDesc = stringResource(R.string.seconds_remaining, remainingSeconds)
+                    CircularProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .semantics { contentDescription = remainingDesc },
+                        color = if (urgent) UrgentRed else MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        strokeWidth = 3.dp,
+                    )
+                } else {
+                    IconButton(onClick = onAdvanceHotp) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = stringResource(R.string.next_hotp),
+                        )
+                    }
+                }
+                Spacer(Modifier.width(4.dp))
+            }
             IconButton(onClick = onEdit) {
                 Icon(
                     imageVector = Icons.Outlined.Edit,

@@ -204,6 +204,9 @@ fun HomeScreen(viewModel: OtpViewModel) {
                                     clipboard.setText(AnnotatedString(value))
                                     viewModel.notifyCopied()
                                 },
+                                onToggleValue = {
+                                    viewModel.setValueVisible(account.id, !account.valueVisible)
+                                },
                                 onEdit = { dialog = HomeDialog.Menu(account) },
                             )
                         } else {
@@ -213,6 +216,9 @@ fun HomeScreen(viewModel: OtpViewModel) {
                                 onCopyCode = { code ->
                                     clipboard.setText(AnnotatedString(code))
                                     viewModel.notifyCopied()
+                                },
+                                onToggleValue = {
+                                    viewModel.setValueVisible(account.id, !account.valueVisible)
                                 },
                                 onAdvanceHotp = { viewModel.advanceHotp(account.id) },
                                 onEdit = { dialog = HomeDialog.Menu(account) },

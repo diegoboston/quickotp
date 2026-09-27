@@ -30,6 +30,8 @@ data class OtpAccount(
     val kind: String = EntryKind.OTP.name,
     @ColumnInfo(defaultValue = "''")
     val barcodeFormat: String = "",
+    @ColumnInfo(defaultValue = "1")
+    val valueVisible: Boolean = true,
 ) {
     val isBarcode: Boolean get() = kind == EntryKind.BARCODE.name
     val otpType: OtpType get() = OtpType.fromName(type)

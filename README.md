@@ -18,6 +18,7 @@ Designed for sideloading on recent 64-bit ARM phones. CI builds a signed arm64 r
 ## Features
 
 - **Add from barcode** — Camera button in the top bar. An `otpauth://` URI or a Base32 secret becomes an OTP, and the app asks for a label in a field labeled “Add label”. Any other barcode is stored exactly as scanned. The app asks you to label it, then shows that label and the scanned value in the home list.
+- **Add from image** — Gallery button in the top bar, next to the camera. It opens the system photo picker (no storage permission needed), reads the first barcode in the chosen image, and then behaves exactly like a camera scan. If the image has no readable barcode, a snackbar says so.
 - **Stored barcodes** — These rows sit with the OTPs. A down chevron next to the label expands a clean barcode rendered from the stored value (the same symbology when it can be encoded, otherwise a QR of that value). The chevron switches to up and hides the barcode, showing the value again. Tap the value to copy it. Whether the barcode or the value is showing is kept on the device. The pencil menu renames or deletes it.
 - **Add from secret** — Plus button in the top bar. Paste a Base32 secret or a full `otpauth://totp/…` / `otpauth://hotp/…` URI, then label it.
 - **Home list** — Each OTP row shows the label with a chevron beside it, the current code (grouped, tap to copy), and a circular spinner for TOTP remaining time. The code and spinner turn **red in the last 10 seconds**. HOTP rows show a refresh button that advances the counter. The down chevron hides the code, the spinner, and the refresh button, and switches to up; up shows them again. That choice is kept on the device across launches.
@@ -28,7 +29,7 @@ Designed for sideloading on recent 64-bit ARM phones. CI builds a signed arm64 r
 
 ```
 ┌─────────────────────────────────────┐
-│ Quick OTP              [barcode] [+]│  ← scan camera · paste secret
+│ Quick OTP      [barcode] [image] [+]│  ← scan camera · scan image · paste secret
 ├─────────────────────────────────────┤
 │                                     │
 │  OTP for mysite              ⌄      │
@@ -81,7 +82,7 @@ JVM unit tests cover Base32, RFC 4226 HOTP vectors, RFC 6238 TOTP vectors (SHA1/
 ```
 app/src/main/java/com/quickotp/app/
   otp/           TOTP/HOTP, Base32, otpauth URI
-  barcode/       QR and other barcode encode (ZXing), scan classification, Android bitmaps
+  barcode/       QR and other barcode encode (ZXing), ML Kit scan setup and image scan, scan classification, Android bitmaps
   data/          Room accounts
   ui/            Compose home list, camera scan, dialogs
 .github/workflows/android.yml

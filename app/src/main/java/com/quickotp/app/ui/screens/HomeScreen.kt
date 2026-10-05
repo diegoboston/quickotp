@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -23,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
@@ -65,6 +67,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.quickotp.app.R
 import com.quickotp.app.barcode.ClassifiedScan
+import com.quickotp.app.barcode.MlKitBarcodes
 import com.quickotp.app.barcode.QrBitmaps
 import com.quickotp.app.data.OtpAccount
 import com.quickotp.app.otp.OtpDraft
@@ -140,6 +143,28 @@ fun HomeScreen(viewModel: OtpViewModel) {
         }
     }
 
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        MlKitBarcodes.scanImage(
+            context = context,
+            uri = uri,
+            onFound = { raw, format ->
+                viewModel.tryAcceptScan(
+                    raw,
+                    format,
+                    context.getString(R.string.invalid_barcode),
+                )
+            },
+            onNotFound = {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(context.getString(R.string.no_barcode_in_image))
+                }
+            },
+        )
+    }
+
     Box(Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
@@ -162,6 +187,18 @@ fun HomeScreen(viewModel: OtpViewModel) {
                             Icon(
                                 imageVector = Icons.Filled.QrCodeScanner,
                                 contentDescription = stringResource(R.string.add_from_barcode),
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                galleryLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.PhotoLibrary,
+                                contentDescription = stringResource(R.string.add_from_image),
                             )
                         }
                         IconButton(onClick = { dialog = HomeDialog.AddSecret }) {

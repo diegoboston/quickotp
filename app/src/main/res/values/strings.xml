@@ -40,6 +40,8 @@
     <string name="copy_code">Copy code</string>
     <string name="copied">Copied</string>
     <string name="next_hotp">Next code</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
     <string name="camera_permission_required">Camera permission is required to scan barcodes</string>
     <string name="invalid_barcode">Not a valid OTP barcode</string>
     <string name="no_barcode_in_image">No barcode found in that image</string>

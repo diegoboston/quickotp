@@ -39,6 +39,10 @@ fun StoredBarcodeRow(
     onCopyValue: (String) -> Unit,
     onToggleValue: () -> Unit,
     onEdit: () -> Unit,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
 ) {
     val valueVisible = account.valueVisible
     Card(
@@ -47,14 +51,16 @@ fun StoredBarcodeRow(
             .padding(horizontal = 16.dp, vertical = 6.dp),
         colors = CardDefaults.cardColors(),
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.Top,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
                         text = account.label,
                         style = MaterialTheme.typography.titleMedium,
@@ -76,43 +82,49 @@ fun StoredBarcodeRow(
                         )
                     }
                 }
-                if (!valueVisible) {
-                    val rendered = remember(account.secret, account.barcodeFormat) {
-                        runCatching {
-                            BarcodeBitmaps.render(account.secret, account.barcodeFormat)
-                        }.getOrNull()
-                    }
-                    if (rendered != null) {
-                        val image = remember(rendered) { rendered.bitmap.asImageBitmap() }
-                        Image(
-                            bitmap = image,
-                            contentDescription = stringResource(R.string.barcode_for, account.label),
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .padding(bottom = 4.dp)
-                                .fillMaxWidth()
-                                .height(if (rendered.wide) 120.dp else 220.dp)
-                                .background(Color.White)
-                                .padding(8.dp),
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.barcode_render_failed),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(bottom = 4.dp),
-                        )
-                        StoredValue(account.secret, onCopyValue)
-                    }
-                } else {
-                    StoredValue(account.secret, onCopyValue)
+                ReorderArrows(
+                    canMoveUp = canMoveUp,
+                    canMoveDown = canMoveDown,
+                    onMoveUp = onMoveUp,
+                    onMoveDown = onMoveDown,
+                )
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = stringResource(R.string.edit_barcode),
+                    )
                 }
             }
-            IconButton(onClick = onEdit) {
-                Icon(
-                    imageVector = Icons.Outlined.Edit,
-                    contentDescription = stringResource(R.string.edit_barcode),
-                )
+            if (!valueVisible) {
+                val rendered = remember(account.secret, account.barcodeFormat) {
+                    runCatching {
+                        BarcodeBitmaps.render(account.secret, account.barcodeFormat)
+                    }.getOrNull()
+                }
+                if (rendered != null) {
+                    val image = remember(rendered) { rendered.bitmap.asImageBitmap() }
+                    Image(
+                        bitmap = image,
+                        contentDescription = stringResource(R.string.barcode_for, account.label),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .padding(bottom = 4.dp)
+                            .fillMaxWidth()
+                            .height(if (rendered.wide) 120.dp else 220.dp)
+                            .background(Color.White)
+                            .padding(8.dp),
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.barcode_render_failed),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                    StoredValue(account.secret, onCopyValue)
+                }
+            } else {
+                StoredValue(account.secret, onCopyValue)
             }
         }
     }

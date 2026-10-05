@@ -46,6 +46,10 @@ fun OtpCodeRow(
     onToggleValue: () -> Unit,
     onAdvanceHotp: () -> Unit,
     onEdit: () -> Unit,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
 ) {
     val code = OtpCodes.currentCode(account, nowMillis)
     val formatted = OtpCodes.formatCode(code)
@@ -85,9 +89,9 @@ fun OtpCodeRow(
                     IconButton(onClick = onToggleValue) {
                         Icon(
                             imageVector = if (account.valueVisible) {
-                                Icons.Filled.KeyboardArrowDown
-                            } else {
                                 Icons.Filled.KeyboardArrowUp
+                            } else {
+                                Icons.Filled.KeyboardArrowDown
                             },
                             contentDescription = stringResource(
                                 if (account.valueVisible) R.string.hide_code else R.string.show_code,
@@ -127,6 +131,12 @@ fun OtpCodeRow(
                 }
                 Spacer(Modifier.width(4.dp))
             }
+            ReorderArrows(
+                canMoveUp = canMoveUp,
+                canMoveDown = canMoveDown,
+                onMoveUp = onMoveUp,
+                onMoveDown = onMoveDown,
+            )
             IconButton(onClick = onEdit) {
                 Icon(
                     imageVector = Icons.Outlined.Edit,

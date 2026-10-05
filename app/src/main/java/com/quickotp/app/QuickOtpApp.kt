@@ -10,8 +10,7 @@ class QuickOtpApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val db = AppDatabase.get(this)
-        otpRepository = OtpRepository(db.otpAccountDao())
+        otpRepository = OtpRepository(AppDatabase.get(this))
     }
 
     companion object {

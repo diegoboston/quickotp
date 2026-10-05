@@ -8,6 +8,7 @@ import com.quickotp.app.R
 import com.quickotp.app.barcode.ClassifiedScan
 import com.quickotp.app.barcode.ScanClassifier
 import com.quickotp.app.data.EntryKind
+import com.quickotp.app.data.EntryOrder
 import com.quickotp.app.data.OtpAccount
 import com.quickotp.app.data.toAccount
 import com.quickotp.app.otp.OtpDraft
@@ -136,6 +137,12 @@ class OtpViewModel(app: Application) : AndroidViewModel(app) {
             if (account.isBarcode || account.otpType != OtpType.HOTP) return@launch
             repo.update(account.copy(counter = account.counter + 1))
         }
+    }
+
+    /** Moves an entry [offset] places in the home list (negative is up). */
+    fun move(id: Long, offset: Int) {
+        val reordered = EntryOrder.move(accounts.value.map { it.id }, id, offset) ?: return
+        viewModelScope.launch { repo.reorder(reordered) }
     }
 
     fun setValueVisible(id: Long, visible: Boolean) {

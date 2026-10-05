@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -233,7 +233,9 @@ fun HomeScreen(viewModel: OtpViewModel) {
                         .padding(padding),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    items(accounts, key = { it.id }) { account ->
+                    itemsIndexed(accounts, key = { _, account -> account.id }) { index, account ->
+                        val canMoveUp = index > 0
+                        val canMoveDown = index < accounts.lastIndex
                         if (account.isBarcode) {
                             StoredBarcodeRow(
                                 account = account,
@@ -245,6 +247,10 @@ fun HomeScreen(viewModel: OtpViewModel) {
                                     viewModel.setValueVisible(account.id, !account.valueVisible)
                                 },
                                 onEdit = { dialog = HomeDialog.Menu(account) },
+                                canMoveUp = canMoveUp,
+                                canMoveDown = canMoveDown,
+                                onMoveUp = { viewModel.move(account.id, -1) },
+                                onMoveDown = { viewModel.move(account.id, 1) },
                             )
                         } else {
                             OtpCodeRow(
@@ -259,6 +265,10 @@ fun HomeScreen(viewModel: OtpViewModel) {
                                 },
                                 onAdvanceHotp = { viewModel.advanceHotp(account.id) },
                                 onEdit = { dialog = HomeDialog.Menu(account) },
+                                canMoveUp = canMoveUp,
+                                canMoveDown = canMoveDown,
+                                onMoveUp = { viewModel.move(account.id, -1) },
+                                onMoveDown = { viewModel.move(account.id, 1) },
                             )
                         }
                     }

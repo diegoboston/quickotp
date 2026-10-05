@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Quick OTP</string>
     <string name="add_from_barcode">Scan a barcode</string>
+    <string name="add_from_image">Scan a barcode from an image</string>
     <string name="add_from_secret">Add OTP from secret</string>
     <string name="scan_otp_barcode">Scan OTP barcode</string>
     <string name="scan_hint">Point the camera at a QR or barcode</string>
@@ -41,6 +42,7 @@
     <string name="next_hotp">Next code</string>
     <string name="camera_permission_required">Camera permission is required to scan barcodes</string>
     <string name="invalid_barcode">Not a valid OTP barcode</string>
+    <string name="no_barcode_in_image">No barcode found in that image</string>
     <string name="invalid_secret">Not a valid secret or otpauth URI</string>
     <string name="close">Close</string>
     <string name="seconds_remaining">%1$d seconds remaining</string>

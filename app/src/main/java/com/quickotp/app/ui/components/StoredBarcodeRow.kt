@@ -1,8 +1,10 @@
 package com.quickotp.app.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,16 +29,19 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.quickotp.app.R
 import com.quickotp.app.barcode.BarcodeBitmaps
+import com.quickotp.app.barcode.WebUrls
 import com.quickotp.app.data.OtpAccount
 
 @Composable
 fun StoredBarcodeRow(
     account: OtpAccount,
     onCopyValue: (String) -> Unit,
+    onOpenUrl: (String) -> Unit,
     onToggleValue: () -> Unit,
     onEdit: () -> Unit,
     canMoveUp: Boolean,
@@ -121,27 +126,51 @@ fun StoredBarcodeRow(
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
-                    StoredValue(account.secret, onCopyValue)
+                    StoredValue(account.secret, onCopyValue, onOpenUrl)
                 }
             } else {
-                StoredValue(account.secret, onCopyValue)
+                StoredValue(account.secret, onCopyValue, onOpenUrl)
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StoredValue(
     value: String,
     onCopyValue: (String) -> Unit,
+    onOpenUrl: (String) -> Unit,
 ) {
-    Text(
-        text = value,
-        style = MaterialTheme.typography.bodyLarge,
-        fontFamily = FontFamily.Monospace,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCopyValue(value) },
-    )
+    val url = remember(value) { WebUrls.httpUrlOrNull(value) }
+    if (url != null) {
+        Text(
+            text = value.trim(),
+            style = MaterialTheme.typography.bodyLarge,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.primary,
+            textDecoration = TextDecoration.Underline,
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = { onOpenUrl(url) },
+                    onLongClick = { onCopyValue(value) },
+                    onClickLabel = stringResource(R.string.open_link),
+                    onLongClickLabel = stringResource(R.string.copy_value),
+                ),
+        )
+    } else {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClick = { onCopyValue(value) },
+                    onClickLabel = stringResource(R.string.copy_value),
+                ),
+        )
+    }
 }

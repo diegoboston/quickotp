@@ -7,7 +7,10 @@
     <string name="scan_otp_barcode">Scan OTP barcode</string>
     <string name="scan_hint">Point the camera at a QR or barcode</string>
     <string name="close_scan">Close scanner</string>
+    <string name="tab_otp">OTP</string>
+    <string name="tab_qr">QR codes</string>
     <string name="empty_accounts">Add an OTP from a barcode or a secret to get started.</string>
+    <string name="empty_qr_codes">Scan a QR code to save it here.</string>
     <string name="secret_or_uri">Secret or otpauth URI</string>
     <string name="secret_hint">Base32 secret or otpauth://…</string>
     <string name="continue_action">Continue</string>
@@ -39,6 +42,9 @@
     <string name="copy_secret">Copy secret</string>
     <string name="copy_code">Copy code</string>
     <string name="copied">Copied</string>
+    <string name="copy_value">Copy</string>
+    <string name="open_link">Open link</string>
+    <string name="open_link_failed">Could not open this link</string>
     <string name="next_hotp">Next code</string>
     <string name="move_up">Move up</string>
     <string name="move_down">Move down</string>
@@ -47,5 +53,13 @@
     <string name="no_barcode_in_image">No barcode found in that image</string>
     <string name="invalid_secret">Not a valid secret or otpauth URI</string>
     <string name="close">Close</string>
+    <string name="update_app_downloading">Downloading update…</string>
+    <string name="update_app_downloading_percent">Downloading update… %1$d%%</string>
+    <string name="update_app_up_to_date">Already up to date (%1$s)</string>
+    <string name="update_app_ready">Update %1$s downloaded — opening installer…</string>
+    <string name="update_app_failed">Update failed: %1$s</string>
+    <string name="update_app_needs_permission">Allow installs from this app, then tap Update now again.</string>
+    <string name="update_app_snackbar_prompt">Version %1$s is available. Update now?</string>
+    <string name="update_app_snackbar_action">Update now</string>
     <string name="seconds_remaining">%1$d seconds remaining</string>
 </resources>

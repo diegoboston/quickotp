@@ -1,8 +1,11 @@
 package com.quickotp.app.ui.screens
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,9 +41,13 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -48,10 +55,12 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +73,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.quickotp.app.R
 import com.quickotp.app.barcode.ClassifiedScan
@@ -72,10 +82,16 @@ import com.quickotp.app.barcode.QrBitmaps
 import com.quickotp.app.data.OtpAccount
 import com.quickotp.app.otp.OtpDraft
 import com.quickotp.app.ui.OtpViewModel
+import com.quickotp.app.ui.components.AppUpdateInProgressBanner
 import com.quickotp.app.ui.components.OtpCodeRow
 import com.quickotp.app.ui.components.StoredBarcodeRow
+import com.quickotp.app.update.AppUpdate
+import com.quickotp.app.update.AppUpdateUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.io.File
+import kotlin.coroutines.resume
 
 private sealed interface HomeDialog {
     data object None : HomeDialog
@@ -95,12 +111,14 @@ fun HomeScreen(viewModel: OtpViewModel) {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val pendingDraft by viewModel.pendingDraft.collectAsStateWithLifecycle()
     val pendingBarcode by viewModel.pendingBarcode.collectAsStateWithLifecycle()
+    val appUpdateState by viewModel.appUpdateState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     var scanning by remember { mutableStateOf(false) }
     var dialog by remember { mutableStateOf<HomeDialog>(HomeDialog.None) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
@@ -129,6 +147,77 @@ fun HomeScreen(viewModel: OtpViewModel) {
                 dialog = HomeDialog.AskBarcodeLabel(barcode)
             }
         }
+    }
+
+    var pendingUpdateApk by remember { mutableStateOf<File?>(null) }
+    val installPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        val apk = pendingUpdateApk
+        pendingUpdateApk = null
+        if (apk == null) return@rememberLauncherForActivityResult
+        if (context.packageManager.canRequestPackageInstalls()) {
+            AppUpdate.launchInstaller(context, apk)
+        } else {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(context.getString(R.string.update_app_needs_permission))
+            }
+        }
+    }
+    fun installAppUpdate(apk: File) {
+        when (AppUpdate.launchInstaller(context, apk)) {
+            AppUpdate.InstallResult.Launched -> Unit
+            AppUpdate.InstallResult.NeedsPermission -> {
+                pendingUpdateApk = apk
+                installPermissionLauncher.launch(
+                    Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${context.packageName}"),
+                    ),
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val versionName = suspendCancellableCoroutine<String?> { cont ->
+            viewModel.checkLaunchUpdateAvailable { cont.resume(it) }
+        } ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = context.getString(R.string.update_app_snackbar_prompt, versionName),
+            actionLabel = context.getString(R.string.update_app_snackbar_action),
+            withDismissAction = true,
+            duration = SnackbarDuration.Long,
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            viewModel.startAppUpdateDownload()
+        }
+    }
+
+    val terminalAppUpdate = when (val state = appUpdateState) {
+        is AppUpdateUiState.UpToDate,
+        is AppUpdateUiState.ReadyToInstall,
+        is AppUpdateUiState.Failed,
+        -> state
+        else -> null
+    }
+    LaunchedEffect(terminalAppUpdate) {
+        when (val state = terminalAppUpdate ?: return@LaunchedEffect) {
+            is AppUpdateUiState.UpToDate -> snackbarHostState.showSnackbar(
+                context.getString(R.string.update_app_up_to_date, state.versionName),
+            )
+            is AppUpdateUiState.ReadyToInstall -> {
+                snackbarHostState.showSnackbar(
+                    context.getString(R.string.update_app_ready, state.versionName),
+                )
+                installAppUpdate(state.apk)
+            }
+            is AppUpdateUiState.Failed -> snackbarHostState.showSnackbar(
+                context.getString(R.string.update_app_failed, state.message),
+            )
+            else -> Unit
+        }
+        viewModel.clearAppUpdateState()
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -212,64 +301,107 @@ fun HomeScreen(viewModel: OtpViewModel) {
             },
             snackbarHost = {},
         ) { padding ->
-            if (accounts.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = stringResource(R.string.empty_accounts),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            val showingQr = selectedTab == 1
+            val visibleAccounts = accounts.filter { it.isBarcode == showingQr }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            ) {
+                AppUpdateInProgressBanner(
+                    state = appUpdateState,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+                PrimaryTabRow(selectedTabIndex = selectedTab) {
+                    Tab(
+                        selected = !showingQr,
+                        onClick = { selectedTab = 0 },
+                        text = { Text(stringResource(R.string.tab_otp)) },
+                    )
+                    Tab(
+                        selected = showingQr,
+                        onClick = { selectedTab = 1 },
+                        text = { Text(stringResource(R.string.tab_qr)) },
                     )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
-                ) {
-                    itemsIndexed(accounts, key = { _, account -> account.id }) { index, account ->
-                        val canMoveUp = index > 0
-                        val canMoveDown = index < accounts.lastIndex
-                        if (account.isBarcode) {
-                            StoredBarcodeRow(
-                                account = account,
-                                onCopyValue = { value ->
-                                    clipboard.setText(AnnotatedString(value))
-                                    viewModel.notifyCopied()
-                                },
-                                onToggleValue = {
-                                    viewModel.setValueVisible(account.id, !account.valueVisible)
-                                },
-                                onEdit = { dialog = HomeDialog.Menu(account) },
-                                canMoveUp = canMoveUp,
-                                canMoveDown = canMoveDown,
-                                onMoveUp = { viewModel.move(account.id, -1) },
-                                onMoveDown = { viewModel.move(account.id, 1) },
-                            )
-                        } else {
-                            OtpCodeRow(
-                                account = account,
-                                nowMillis = nowMillis,
-                                onCopyCode = { code ->
-                                    clipboard.setText(AnnotatedString(code))
-                                    viewModel.notifyCopied()
-                                },
-                                onToggleValue = {
-                                    viewModel.setValueVisible(account.id, !account.valueVisible)
-                                },
-                                onAdvanceHotp = { viewModel.advanceHotp(account.id) },
-                                onEdit = { dialog = HomeDialog.Menu(account) },
-                                canMoveUp = canMoveUp,
-                                canMoveDown = canMoveDown,
-                                onMoveUp = { viewModel.move(account.id, -1) },
-                                onMoveDown = { viewModel.move(account.id, 1) },
-                            )
+                if (visibleAccounts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (showingQr) R.string.empty_qr_codes else R.string.empty_accounts,
+                            ),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
+                    ) {
+                        itemsIndexed(visibleAccounts, key = { _, account -> account.id }) { index, account ->
+                            val canMoveUp = index > 0
+                            val canMoveDown = index < visibleAccounts.lastIndex
+                            fun move(direction: Int) {
+                                val neighbor = visibleAccounts.getOrNull(index + direction) ?: return
+                                val from = accounts.indexOfFirst { it.id == account.id }
+                                val to = accounts.indexOfFirst { it.id == neighbor.id }
+                                if (from >= 0 && to >= 0 && to != from) {
+                                    viewModel.move(account.id, to - from)
+                                }
+                            }
+                            if (account.isBarcode) {
+                                StoredBarcodeRow(
+                                    account = account,
+                                    onCopyValue = { value ->
+                                        clipboard.setText(AnnotatedString(value))
+                                        viewModel.notifyCopied()
+                                    },
+                                    onOpenUrl = { url ->
+                                        val opened = runCatching {
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                                        }.isSuccess
+                                        if (!opened) {
+                                            coroutineScope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    context.getString(R.string.open_link_failed),
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onToggleValue = {
+                                        viewModel.setValueVisible(account.id, !account.valueVisible)
+                                    },
+                                    onEdit = { dialog = HomeDialog.Menu(account) },
+                                    canMoveUp = canMoveUp,
+                                    canMoveDown = canMoveDown,
+                                    onMoveUp = { move(-1) },
+                                    onMoveDown = { move(1) },
+                                )
+                            } else {
+                                OtpCodeRow(
+                                    account = account,
+                                    nowMillis = nowMillis,
+                                    onCopyCode = { code ->
+                                        clipboard.setText(AnnotatedString(code))
+                                        viewModel.notifyCopied()
+                                    },
+                                    onToggleValue = {
+                                        viewModel.setValueVisible(account.id, !account.valueVisible)
+                                    },
+                                    onAdvanceHotp = { viewModel.advanceHotp(account.id) },
+                                    onEdit = { dialog = HomeDialog.Menu(account) },
+                                    canMoveUp = canMoveUp,
+                                    canMoveDown = canMoveDown,
+                                    onMoveUp = { move(-1) },
+                                    onMoveDown = { move(1) },
+                                )
+                            }
                         }
                     }
                 }
@@ -314,6 +446,7 @@ fun HomeScreen(viewModel: OtpViewModel) {
             },
             onSave = { label ->
                 viewModel.savePending(label)
+                selectedTab = 0
                 dialog = HomeDialog.None
             },
         )
@@ -326,6 +459,7 @@ fun HomeScreen(viewModel: OtpViewModel) {
             },
             onSave = { label ->
                 viewModel.savePendingBarcode(label)
+                selectedTab = 1
                 dialog = HomeDialog.None
             },
         )

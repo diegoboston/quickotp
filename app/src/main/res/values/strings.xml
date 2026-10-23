@@ -15,6 +15,7 @@
     <string name="secret_hint">Base32 secret or otpauth://…</string>
     <string name="continue_action">Continue</string>
     <string name="cancel">Cancel</string>
+    <string name="navigate">Navigate</string>
     <string name="save">Save</string>
     <string name="label_title">Label this OTP</string>
     <string name="label_barcode_title">Label this barcode</string>

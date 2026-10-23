@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -71,6 +72,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -79,6 +81,7 @@ import com.quickotp.app.R
 import com.quickotp.app.barcode.ClassifiedScan
 import com.quickotp.app.barcode.MlKitBarcodes
 import com.quickotp.app.barcode.QrBitmaps
+import com.quickotp.app.barcode.WebUrls
 import com.quickotp.app.data.OtpAccount
 import com.quickotp.app.otp.OtpDraft
 import com.quickotp.app.ui.OtpViewModel
@@ -450,19 +453,42 @@ fun HomeScreen(viewModel: OtpViewModel) {
                 dialog = HomeDialog.None
             },
         )
-        is HomeDialog.AskBarcodeLabel -> LabelDialog(
-            title = stringResource(R.string.label_barcode_title),
-            initialLabel = "",
-            onDismiss = {
-                viewModel.clearPendingBarcode()
-                dialog = HomeDialog.None
-            },
-            onSave = { label ->
-                viewModel.savePendingBarcode(label)
-                selectedTab = 1
-                dialog = HomeDialog.None
-            },
-        )
+        is HomeDialog.AskBarcodeLabel -> {
+            val link = WebUrls.httpUrlOrNull(current.stored.value)
+            LabelDialog(
+                title = stringResource(R.string.label_barcode_title),
+                initialLabel = "",
+                link = link,
+                onDismiss = {
+                    viewModel.clearPendingBarcode()
+                    dialog = HomeDialog.None
+                },
+                onSave = { label ->
+                    viewModel.savePendingBarcode(label)
+                    selectedTab = 1
+                    dialog = HomeDialog.None
+                },
+                onNavigate = if (link == null) {
+                    null
+                } else {
+                    {
+                        val opened = runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, link.toUri()))
+                        }.isSuccess
+                        if (opened) {
+                            viewModel.clearPendingBarcode()
+                            dialog = HomeDialog.None
+                        } else {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    context.getString(R.string.open_link_failed),
+                                )
+                            }
+                        }
+                    }
+                },
+            )
+        }
         is HomeDialog.Menu -> EditSheet(
             account = current.account,
             onDismiss = { dialog = HomeDialog.None },
@@ -542,33 +568,53 @@ private fun LabelDialog(
     initialLabel: String,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
+    link: String? = null,
+    onNavigate: (() -> Unit)? = null,
 ) {
     var text by remember { mutableStateOf(initialLabel) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.label_hint)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                ),
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onSave(text) },
-                enabled = text.isNotBlank(),
-            ) {
-                Text(stringResource(R.string.save))
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (link != null) {
+                    Text(
+                        text = link,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.label_hint)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                    ),
+                )
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+                if (onNavigate != null) {
+                    TextButton(onClick = onNavigate) {
+                        Text(stringResource(R.string.navigate))
+                    }
+                }
+                TextButton(
+                    onClick = { onSave(text) },
+                    enabled = text.isNotBlank(),
+                ) {
+                    Text(stringResource(R.string.save))
+                }
+            }
         },
     )
 }
